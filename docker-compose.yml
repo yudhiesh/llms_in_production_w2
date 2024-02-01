@@ -1,0 +1,25 @@
+# Docker Compose file version
+version: '3.8'
+
+services:
+  # Define the service for your Streamlit application
+  streamlit-app:
+    # Build the Docker image using the Dockerfile in the current directory
+    build: .
+    # Map port 8080 of the container to port 8080 on the host
+    # This allows the Streamlit app to be accessed from the host machine
+    ports:
+      - "8080:8080"
+    # Mount volumes for live code updating
+    # This maps the src directory and .streamlit configuration 
+    # from your host to the container
+    volumes:
+      - ./src:/app/src
+      - ./.streamlit:/app/.streamlit
+    # Set any environment variables required by the application
+    # Replace 'SOME_ENV_VAR' with your actual environment variables
+    # environment:
+    #   - SOME_ENV_VAR=value 
+    # Override the default command from the Dockerfile
+    # This is the command to start the Streamlit application
+    # command: streamlit run src/streamlit_app.py --server.port 8080

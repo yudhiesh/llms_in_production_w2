@@ -4,51 +4,50 @@ import time
 import guardrails as gd
 import openai
 import streamlit as st
-from gptcache import Cache, Config
-from gptcache.adapter.api import get, init_similar_cache, put
+from gptcache import Cache
+from gptcache.adapter.api import SearchDistanceEvaluation, get, init_similar_cache, put
+from gptcache.embedding import Onnx
+from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.processor.post import nop
-from gptcache.processor.pre import get_prompt
 
 from src.constants import OPENAI_MODEL_ARGUMENTS, PROMPT
 from src.models import ValidSQL
 
-# TODO:
-# FOR W2
-# 3. Setup Semantic Caching
-# 4. Setup Arize Phoenix using OpenAI
-
-# FOR W1
-# 1. Remove use of LangChain
-# 2. Use Rail Str instead of Pydantic due to support issues
-
 st.set_page_config(page_title="SQL Code Generator")
 st.title("SQL Code Generator")
 
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-os.environ["OPENAI_API_KEY"] = openai_api_key
+
+def get_openai_api_key() -> None:
+    openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+    if not openai_api_key.startswith("sk-"):
+        st.error("Please enter your OpenAI API key!", icon="⚠️")
 
 
 @st.cache_resource
-def get_cache():
-    cache.init(pre_embedding_func=get_prompt)
+def get_cache() -> Cache:
     inner_cache = Cache()
+    onnx = Onnx()
+    data_manager = get_data_manager(
+        CacheBase("sqlite"),
+        VectorBase("faiss", dimension=onnx.dimension),
+    )
     init_similar_cache(
-        cache_obj=inner_cache, post_func=nop, config=Config(similarity_threshold=0.9)
+        cache_obj=inner_cache,
+        post_func=nop,
+        data_manager=data_manager,
+        evaluation=SearchDistanceEvaluation(),
     )
     return inner_cache
 
 
 @st.cache_resource
-def get_guard():
+def get_guard() -> gd.Guard:
     guard = gd.Guard.from_pydantic(output_class=ValidSQL, prompt=PROMPT)
     return guard
 
 
-guard = get_guard()
-cache = get_cache()
-
-
-def generate_response(input_text: str, cache: Cache) -> None:
+def generate_response(input_text: str, cache: Cache, guard: gd.Guard) -> None:
     try:
         start_time = time.time()
         cached_result = get(input_text, cache_obj=cache, top_k=1)
@@ -61,7 +60,9 @@ def generate_response(input_text: str, cache: Cache) -> None:
                 error,
             ) = guard(
                 openai.chat.completions.create,
-                prompt_params={"nl_instruction": input_text},
+                prompt_params={
+                    "nl_instruction": input_text,
+                },
                 **OPENAI_MODEL_ARGUMENTS,
             )
             total_time = time.time() - start_time
@@ -82,13 +83,19 @@ def generate_response(input_text: str, cache: Cache) -> None:
         st.error(f"Error: {e}")
 
 
-with st.form("my_form"):
-    st.warning("Our models can make mistakes!", icon="🚨")
-    text = st.text_area(
-        "Enter text:",
-    )
-    submitted = st.form_submit_button("Submit")
-    if not openai_api_key.startswith("sk-"):
-        st.error("Please enter your OpenAI API key!", icon="⚠️")
-    if submitted and openai_api_key.startswith("sk-"):
-        generate_response(text, cache)
+def main() -> None:
+    guard = get_guard()
+    cache = get_cache()
+    get_openai_api_key()
+    with st.form("my_form"):
+        st.warning("Our models can make mistakes!", icon="🚨")
+        text = st.text_area(
+            "Enter text:",
+        )
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            generate_response(text, cache, guard)
+
+
+if __name__ == "__main__":
+    main()

@@ -3,15 +3,27 @@ import time
 
 import guardrails as gd
 import openai
+import phoenix as px
 import streamlit as st
 from gptcache import Cache
 from gptcache.adapter.api import SearchDistanceEvaluation, get, init_similar_cache, put
 from gptcache.embedding import Onnx
 from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.processor.post import nop
+from phoenix.trace.exporter import HttpExporter
+from phoenix.trace.openai import OpenAIInstrumentor
+from phoenix.trace.tracer import Tracer
 
 from src.constants import OPENAI_MODEL_ARGUMENTS, PROMPT
 from src.models import ValidSQL
+
+
+@st.cache_resource
+def instrument() -> None:
+    px.launch_app()
+    tracer = Tracer(exporter=HttpExporter())
+    OpenAIInstrumentor(tracer).instrument()
+
 
 st.set_page_config(page_title="SQL Code Generator")
 st.title("SQL Code Generator")
@@ -87,6 +99,7 @@ def main() -> None:
     guard = get_guard()
     cache = get_cache()
     get_openai_api_key()
+    instrument()
     with st.form("my_form"):
         st.warning("Our models can make mistakes!", icon="🚨")
         text = st.text_area(

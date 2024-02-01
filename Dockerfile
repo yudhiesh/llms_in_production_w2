@@ -6,7 +6,7 @@ ENV PYTHONPATH $APP_HOME
 WORKDIR $APP_HOME
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y git \
+RUN apt-get update && apt-get install -y git gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies and install them

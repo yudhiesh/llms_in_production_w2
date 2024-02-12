@@ -7,8 +7,8 @@ from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.processor.post import nop
 from phoenix.trace.openai import OpenAIInstrumentor
 
-from src.constants import PROMPT
 from src.models import ValidSQL
+from src.prompt import PROMPT
 
 
 @st.cache_resource

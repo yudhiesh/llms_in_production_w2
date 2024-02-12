@@ -1,63 +1,32 @@
-import os
 import time
 
 import guardrails as gd
 import openai
 import streamlit as st
 from gptcache import Cache
-from gptcache.adapter.api import SearchDistanceEvaluation, get, init_similar_cache, put
-from gptcache.embedding import Onnx
-from gptcache.manager import CacheBase, VectorBase, get_data_manager
-from gptcache.processor.post import nop
-from phoenix.trace.openai import OpenAIInstrumentor
+from gptcache.adapter.api import get, put
 
-from src.constants import OPENAI_MODEL_ARGUMENTS, PROMPT
+from src.cached_resources import get_cache, get_guard, instrument
+from src.constants import GPTCACHE_GET_TOP_K, OPENAI_MODEL_ARGUMENTS
 from src.models import ValidSQL
-
-
-@st.cache_resource
-def instrument() -> None:
-    OpenAIInstrumentor().instrument()
-
+from src.utils import get_openai_api_key
 
 st.set_page_config(page_title="SQL Code Generator")
 st.title("SQL Code Generator")
 
 
-def get_openai_api_key() -> None:
-    openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-    os.environ["OPENAI_API_KEY"] = openai_api_key
-    if not openai_api_key.startswith("sk-"):
-        st.error("Please enter your OpenAI API key!", icon="⚠️")
-
-
-@st.cache_resource
-def get_cache() -> Cache:
-    inner_cache = Cache()
-    onnx = Onnx()
-    data_manager = get_data_manager(
-        CacheBase("sqlite"),
-        VectorBase("faiss", dimension=onnx.dimension),
-    )
-    init_similar_cache(
-        cache_obj=inner_cache,
-        post_func=nop,
-        data_manager=data_manager,
-        evaluation=SearchDistanceEvaluation(),
-    )
-    return inner_cache
-
-
-@st.cache_resource
-def get_guard() -> gd.Guard:
-    guard = gd.Guard.from_pydantic(output_class=ValidSQL, prompt=PROMPT)
-    return guard
-
-
 def generate_response(input_text: str, cache: Cache, guard: gd.Guard) -> None:
+    """
+    Generate a response for the given input text taking in the cache and guard.
+    """
     try:
         start_time = time.time()
-        cached_result = get(input_text, cache_obj=cache, top_k=1)
+        cached_result = get(
+            input_text,
+            cache_obj=cache,
+            top_k=GPTCACHE_GET_TOP_K,
+        )
+        # Cache miss
         if not cached_result:
             (_, validated_response, _, validation_passed, error,) = guard(
                 openai.chat.completions.create,
@@ -76,6 +45,7 @@ def generate_response(input_text: str, cache: Cache, guard: gd.Guard) -> None:
                 st.info(f"That query took: {total_time:.2f}s")
                 put(input_text, generated_sql, cache_obj=cache)
 
+        # Cache hit
         else:
             total_time = time.time() - start_time
             st.info(cached_result[0])

@@ -15,3 +15,5 @@ OPENAI_MODEL_ARGUMENTS = dict(
     max_tokens=MAX_TOKENS,
     temperature=TEMPERATURE,
 )
+
+GPTCACHE_GET_TOP_K = 1

@@ -1,5 +1,11 @@
-.PHONY: restart-docker
+.PHONY: restart start stop
 
-restart-docker:
-	docker-compose down -v
-	docker-compose up --build -d
+restart:
+	$(MAKE) stop
+	$(MAKE) start
+
+start:
+	docker compose up --build -d
+
+stop:
+	docker compose down -v

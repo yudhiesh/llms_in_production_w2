@@ -1,5 +1,5 @@
 # Docker Compose file version
-version: '3.8'
+version: "3.8"
 
 services:
   # Define the service for your Streamlit application
@@ -8,12 +8,17 @@ services:
     build: .
     # Map port 8080 of the container to port 8080 on the host
     # This allows the Streamlit app to be accessed from the host machine
+    environment:
+      - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006
     ports:
       - "8080:8080"
-      - "6006:6006" # Expose Phoenix App to host machine
     # Mount volumes for live code updating
     # This maps the src directory and .streamlit configuration
     # from your host to the container
     volumes:
       - ./src:/app/src
       - ./.streamlit:/app/.streamlit
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"

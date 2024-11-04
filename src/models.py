@@ -1,13 +1,15 @@
-from guardrails.validators import BugFreeSQL
+from guardrails.hub import ValidSQL
 from pydantic import BaseModel, Field
 
 
-class ValidSQL(BaseModel):
+class LLMResponse(BaseModel):
     """
-    A valid SQL guardrail model.
+    LLM Response that is validated using Guardrails.ai
     """
 
     generated_sql: str = Field(
         description="Generate PostgreSQL for the given natural language instruction.",
-        validators=[BugFreeSQL(on_fail="reask")],
+        validators=[
+            ValidSQL(on_fail="reask"),
+        ],
     )

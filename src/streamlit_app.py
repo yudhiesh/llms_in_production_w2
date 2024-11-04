@@ -8,7 +8,7 @@ from gptcache.adapter.api import get, put
 
 from src.cached_resources import get_cache, get_guard, instrument
 from src.constants import GPTCACHE_GET_TOP_K, OPENAI_MODEL_ARGUMENTS
-from src.models import ValidSQL
+from src.models import LLMResponse
 from src.utils import get_openai_api_key
 
 st.set_page_config(page_title="SQL Code Generator")
@@ -28,10 +28,16 @@ def generate_response(input_text: str, cache: Cache, guard: gd.Guard) -> None:
         )
         # Cache miss
         if not cached_result:
-            (_, validated_response, _, validation_passed, error,) = guard(
+            (
+                _,
+                validated_response,
+                _,
+                validation_passed,
+                error,
+            ) = guard(
                 openai.chat.completions.create,
                 prompt_params={
-                    "nl_instruction": input_text,
+                    "query": input_text,
                 },
                 **OPENAI_MODEL_ARGUMENTS,
             )
@@ -39,7 +45,7 @@ def generate_response(input_text: str, cache: Cache, guard: gd.Guard) -> None:
             if error or not validation_passed or not validated_response:
                 st.error(f"Unable to produce an answer due to: {error}")
             else:
-                valid_sql = ValidSQL(**validated_response)
+                valid_sql = LLMResponse(**validated_response)
                 generated_sql = valid_sql.generated_sql
                 st.info(generated_sql)
                 st.info(f"That query took: {total_time:.2f}s")

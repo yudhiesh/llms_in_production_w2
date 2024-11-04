@@ -1,15 +1,18 @@
-# Docker Compose file version
-version: "3.8"
-
 services:
   # Define the service for your Streamlit application
   streamlit-app:
     # Build the Docker image using the Dockerfile in the current directory
-    build: .
+    backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      args:
+        OPENAI_API_KEY: ${OPENAI_API_KEY}
+        GUARDRAILS_TOKEN: ${GUARDRAILS_TOKEN}
     # Map port 8080 of the container to port 8080 on the host
     # This allows the Streamlit app to be accessed from the host machine
     environment:
-      - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006
+      - COLLECTOR_ENDPOINT=http://phoenix:6006/v1/traces
     ports:
       - "8080:8080"
     # Mount volumes for live code updating
@@ -18,7 +21,14 @@ services:
     volumes:
       - ./src:/app/src
       - ./.streamlit:/app/.streamlit
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://0.0.0.0:8080/healthz"]
+      interval: 3s
+      timeout: 1s
+      retries: 3
   phoenix:
     image: arizephoenix/phoenix:latest
     ports:
-      - "6006:6006"
+      ports:
+        - "6006:6006" # UI and OTLP HTTP collector
+        - "4317:4317" # OTLP gRPC collector

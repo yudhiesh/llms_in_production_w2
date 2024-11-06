@@ -1,9 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 arize-phoenix==5.6.0
 arize-phoenix-otel==0.6.1
-gptcache==0.1.44
 guardrails-ai==0.5.0
 openai==1.53.0
 openinference-instrumentation-openai==0.1.17
 pre_commit==4.0.1
-ruff==0.7.2
 streamlit==1.39.0
+redis==5.2.0
+redisvl==0.3.6
+sentence-transformers==3.2.1

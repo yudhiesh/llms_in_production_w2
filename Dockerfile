@@ -15,7 +15,7 @@ COPY ./requirements.txt /app/requirements.txt
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential gcc git \
   && pip install --no-cache-dir --upgrade -r /app/requirements.txt \
-  && guardrails configure --token $GUARDRAILS_TOKEN \
+  && guardrails configure --disable-metrics --disable-remote-inferencing --token $GUARDRAILS_TOKEN \
   && guardrails hub install hub://guardrails/valid_sql \
   && rm -rf /var/lib/apt/lists/*
 

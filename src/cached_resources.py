@@ -5,6 +5,8 @@ from phoenix.otel import register
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from src.models import LLMResponse
 from src.prompt import PROMPT
+import redis
+
 
 @st.cache_resource
 def instrument() -> None:
@@ -13,12 +15,12 @@ def instrument() -> None:
     """
     tracer_provider = register(
         project_name="my-llm-app",
-        endpoint="http://localhost:6006/v1/traces",
+        endpoint="http://phoenix:6006/v1/traces",
     )
     OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 
 @st.cache_resource
-def get_cache() -> SemanticCache:
+def get_semantic_cache() -> SemanticCache:
     """
     Create a cache using RedisVL SemanticCache.
     """
@@ -36,3 +38,10 @@ def get_guard() -> gd.Guard:
     Create an output guard using GuardRails.
     """
     return gd.Guard.from_pydantic(output_class=LLMResponse, prompt=PROMPT)
+
+@st.cache_resource
+def get_exact_match_cache() -> redis.Redis:
+    """
+    Create a Redis connection for exact match cache using Redis Hash Map.
+    """
+    return redis.Redis(host='redis', port=6379, db=0)

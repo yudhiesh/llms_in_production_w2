@@ -1,4 +1,4 @@
-MODEL_NAME = "gpt-3.5-turbo"
+MODEL_NAME = "gpt-4o-mini"
 MAX_TOKENS = 2048
 TEMPERATURE = 0.0
 
@@ -7,5 +7,3 @@ OPENAI_MODEL_ARGUMENTS = dict(
     max_tokens=MAX_TOKENS,
     temperature=TEMPERATURE,
 )
-
-GPTCACHE_GET_TOP_K = 1

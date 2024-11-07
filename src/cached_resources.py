@@ -1,14 +1,11 @@
 import guardrails as gd
 import streamlit as st
-from gptcache import Cache
-from gptcache.adapter.api import SearchDistanceEvaluation, init_similar_cache
-from gptcache.embedding import Onnx
-from gptcache.manager import CacheBase, VectorBase, get_data_manager
-from gptcache.processor.post import nop
-from phoenix.trace.openai import OpenAIInstrumentor
-
-from src.models import ValidSQL
+from redisvl.extensions.llmcache import SemanticCache
+from phoenix.otel import register
+from openinference.instrumentation.openai import OpenAIInstrumentor
+from src.models import LLMResponse
 from src.prompt import PROMPT
+import redis
 
 
 @st.cache_resource
@@ -16,33 +13,35 @@ def instrument() -> None:
     """
     Instrument the OpenAI API using Phoenix.
     """
-    OpenAIInstrumentor().instrument()
-
+    tracer_provider = register(
+        project_name="my-llm-app",
+        endpoint="http://phoenix:6006/v1/traces",
+    )
+    OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 
 @st.cache_resource
-def get_cache() -> Cache:
+def get_semantic_cache() -> SemanticCache:
     """
-    Create a cache using GPTCache.
+    Create a cache using RedisVL SemanticCache.
     """
-    inner_cache = Cache()
-    onnx = Onnx()
-    data_manager = get_data_manager(
-        CacheBase("sqlite"),
-        VectorBase("faiss", dimension=onnx.dimension),
+    llmcache = SemanticCache(
+        name="llmcache",                    
+        prefix="llmcache",                   
+        redis_url="redis://redis:6379",      
+        distance_threshold=0.1               
     )
-    init_similar_cache(
-        cache_obj=inner_cache,
-        post_func=nop,
-        data_manager=data_manager,
-        evaluation=SearchDistanceEvaluation(),
-    )
-    return inner_cache
-
+    return llmcache
 
 @st.cache_resource
 def get_guard() -> gd.Guard:
     """
-    Create a output guard using GuardRails.
+    Create an output guard using GuardRails.
     """
-    guard = gd.Guard.from_pydantic(output_class=ValidSQL, prompt=PROMPT)
-    return guard
+    return gd.Guard.from_pydantic(output_class=LLMResponse, prompt=PROMPT)
+
+@st.cache_resource
+def get_exact_match_cache() -> redis.Redis:
+    """
+    Create a Redis connection for exact match cache using Redis Hash Map.
+    """
+    return redis.Redis(host='redis', port=6379, db=0)
